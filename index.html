@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Demo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="index.css">
+    <script src="index.js" charset="utf-8"></script>
+    <style>
+      body {
+        font-family: sans-serif;
+        background-color: #eee; 
+        color: rgba(63, 62, 62, 0.911);
+      }
+      input, .fake-input {
+        display: block;
+        -webkit-appearance: none;
+        font-family: 'Inconsolata', monospace;
+        width: 15ch;
+        height: 1em;
+        border: 1px solid rgba(10, 10, 10, 0.329);
+        background-color: #f4f4f4;
+        padding: 10px;
+        border-radius: 4px;
+        font-size: 1.2em;
+        transition: all .2s;
+      }
+      .hacky-noautofill {
+        padding-left: calc(10px - 1ch);
+        width: 16ch;
+      }
+      .irrelevant {
+        display: none;
+      }
+      .problem {
+        color: #d80000;
+      }
+      button {
+        -webkit-appearance: none;
+        border: none;
+        background: none;
+        background-color: white;
+        color: #0098ff;
+        padding: 10px;
+        border-radius: 4px;
+        transition: all .2s;
+      }
+      button:hover {
+        background-color: #0098ff;
+        color: white;
+      }
+      button:focus, input:focus {
+        border-color: #0098ff;
+        box-shadow: 0 0 0 1px #0098ff;
+        outline: none;
+      }
+      .dot {
+        transition: top 2s, left 2s;
+        cursor: pointer;
+      }
+      .dot-with-home {
+        position: absolute;
+      }
+      .dying {
+        pointer-events: none;
+        animation: fadeout 3s cubic-bezier(1, 0, 1, 0) forwards;
+      }
+      @keyframes fadeout {
+        from {opacity: 1;}
+        to {opacity: 0;}
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Nhập tài khoản</h1>
+    <p>Hãy chắc chắn rằng bạn nhập <strong>Đúng</strong> mật khẩu.</p>
+    <p><input type="text" name="username" placeholder="Username" value=" " class="hacky-noautofill"></p>
+    <p><input type="password" name="password" placeholder="Password" id="password"></p>
+    <p><span id="password-box" class="fake-input irrelevant"></span></p>
+    <p><a href="">Quên mật khẩu</a></p>
+    <p id="problem" class="problem"></p>
+    <p><button type="button" id="submit">Đăng nhập</button></p>
+  </div>
+
+    <script type="text/javascript">
+      const passwordInput = document.getElementById('password');
+      const passwordBox = document.getElementById('password-box');
+      const submitBtn = document.getElementById('submit');
+      const warning = document.getElementById('problem');
+      let mode = 0;
+      let passwordDotContainer;
+      submitBtn.addEventListener('click', e => {
+        const passwordLength = (mode === 0 ? passwordInput : passwordDotContainer).value.length; 
+        if (passwordLength > 15) {
+          warning.textContent = "Mật khẩu quá dài! Dịch vụ của chúng tôi không cho phép mật khẩu quá an toàn ... trừ khi bạn HACKING.";
+        } else if (passwordLength === 0) {
+          warning.textContent = 'Mật khẩu trống quá an toàn! Vui lòng nhập mật khẩu khác để bảo mật hơn';
+        } else {
+          if (mode === 0) {
+            mode = 1; 
+            warning.textContent = 'Để bảo mật hơn, Vui lòng nhặt đúng và ghép  mật khẩu của bạn sau đó nhấn vào "đăng nhập" lại';
+            passwordInput.classList.add('irrelevant');
+            passwordBox.classList.remove('irrelevant');
+            passwordDotContainer = new PasswordDotContainer(passwordBox, passwordInput.value);
+            passwordDotContainer.start();
+          } else if (mode === 1) {
+            warning.innerHTML = `Xin lỗi, <strong>${passwordDotContainer.value}</strong> mật khẩu không chính xác. Đang tải lại...`;
+            document.body.classList.add('dying');
+            setTimeout(() => window.location.reload(), 3000);
+          }
+        }
+      });
+      class PasswordDotContainer {
+        constructor(box, password) {
+          this.value = '';
+          this.dots = password.split('').map(l => new PasswordDot(this, l));
+          const dotElements = document.createDocumentFragment();
+          this.dots.forEach(({element}) => dotElements.appendChild(element));
+          box.appendChild(dotElements);
+          this.dots.forEach(dot => dot.setHome());
+          this.randomiseDot(this.dots[Math.floor(Math.random() * this.dots.length)].element);
+          document.body.getBoundingClientRect();
+        }
+        start() {
+          const screenWidth = window.innerWidth;
+          const screenHeight = window.innerHeight;
+          this.dots.forEach(dot => dot.initialize(screenWidth, screenHeight));
+          document.body.classList.add('no-sheep');
+        }
+        
+        // Ruanyu Jian
+        randomiseDot(dotElem) {
+          const parent = dotElem.parentNode;
+          parent.removeChild(dotElem);
+          parent.appendChild(dotElem);
+        }
+      }
+      class PasswordDot {
+        constructor(container, letter) {
+          this.container = container;
+          this.letter = letter;
+        }
+        get element() {
+          if (this.dot) {
+            return this.dot;
+          } else {
+            const span = document.createElement('span');
+            span.innerHTML = '&bull;';
+            span.classList.add('dot');
+            span.addEventListener('click', e => {
+              this.dot.style.left = this.container.dots[this.container.value.length].homeX + 'px';
+              this.dot.style.top = this.homeY + 'px';
+              this.container.value += this.letter;
+            }, {once: true});
+            return this.dot = span;
+          }
+        }
+        setHome() {
+          const rect = this.dot.getBoundingClientRect();
+          this.dot.style.left = (this.homeX = rect.left) + 'px';
+          this.dot.style.top = (this.homeY = rect.top) + 'px';
+          this.width = rect.width;
+          this.height = rect.height;
+        }
+        initialize(screenWidth, screenHeight) {
+          this.dot.classList.add('dot-with-home');
+          this.dot.style.left = Math.floor(Math.random() ** 5 * (screenWidth - this.width)) + 'px';
+          this.dot.style.top = Math.floor(Math.random() ** 5 * (screenHeight - this.height)) + 'px';
+        }
+      }
+    </script>
+  </body>
+</html>
